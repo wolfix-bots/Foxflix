@@ -1,0 +1,472 @@
+# FOXFLIX – COMPLETE ADDITIONAL FEATURES (ALL EDITS FROM OUR CONVERSATION)
+
+## 🐐 WHAT YOU ALREADY HAVE
+
+You built a basic movie/series streaming site from the first prompt. It has:
+- Homepage with trending, hot, etc. (but no carousels, no auto‑swipe, no infinite scroll)
+- Search and detail pages (basic)
+- Video player with play/pause, but no double‑tap, no quality/language selector, no playback speed memory, no timestamp saving
+- No user accounts
+- No rooms
+- No watchlist, watch history, search history, ratings
+- No staff profiles
+- No "similar to" row
+- No trailer button
+- No social sharing
+- No toasts
+
+## 🎯 WHAT YOU MUST ADD (EVERYTHING BELOW)
+
+You will add **all** the features listed here. Do not remove any existing functionality. Build a new backend (Node.js + Express + Socket.io + SQLite/PostgreSQL) to handle user accounts and rooms. The external movie APIs (16 links) stay as they are.
+
+---
+
+## 1. DOUBLE‑TAP FULLSCREEN (VIDEO PLAYER)
+
+Add `dblclick` listener on `<video>` → toggle fullscreen.
+
+---
+
+## 2. USER ACCOUNTS (SIGN UP / LOG IN)
+
+### Backend tables
+- `users`: id, username, password_hash, watchlist (JSON), watch_history (JSON), search_history (JSON), ratings (JSON), playback_speed (float)
+
+### Endpoints to create
+- Register, login, get user data, save watch progress, add/remove watchlist, save search, save rating, save playback speed.
+
+### Frontend changes
+- Navbar: Sign Up / Login buttons; after login show username + dropdown (Profile, Logout).
+- Profile page (`/profile`): tabs – Watch History (with resume buttons), My List (grid, remove), Search History (re-run, delete), Account Settings, Statistics (total watch time, count).
+- Video player: send progress every 5 seconds (subjectId, progressSeconds, season, episode).
+- Detail page: Add to My List button, star rating (1-5) that saves.
+- Search page: save each search to backend.
+
+---
+
+## 3. VIDEO PLAYER ENHANCEMENTS (ADD TO EXISTING PLAYER)
+
+- **Quality selector** (360, 480, 720, 1080) – reload stream at same timestamp if possible.
+- **Language selector** (if streaming API supports `lang`).
+- **Playback speed selector** (0.5x–2x) – save to user account, apply on next video.
+- **Keyboard shortcuts** (already there? keep them: space, arrows, F, M).
+- **Autoplay** (keep existing).
+
+---
+
+## 4. HOMEPAGE ENHANCEMENTS (REDESIGN EXISTING HOMEPAGE)
+
+Replace your current rows with **horizontal carousels** (Netflix style):
+- Each carousel scrolls left/right, **auto‑swipe** (slow auto‑scroll, pause on hover).
+- **Infinite scrolling**: when user scrolls to end of carousel, fetch next page of that API and append.
+- Sections:
+  1. **Continue Watching** (from user history, if logged in)
+  2. **Trending** (API #2)
+  3. **Hot** (API #4)
+  4. **New Releases** (browse API #12 with sort=newest, or use release date)
+  5. **Top 10** (API #11)
+  6. **Recommended** (API #9 with a random popular subjectId)
+- **Hero section**: random trending title from API #4. Show poster, title, and muted background trailer (from rich detail API `trailerUrl`). Autoplay muted.
+
+---
+
+## 5. DETAIL PAGE ENHANCEMENTS (ADD TO EXISTING DETAIL PAGE)
+
+- **"Similar to this" row** – horizontal carousel using recommendations API (#9).
+- **Staff list** – each staff name clickable → goes to staff profile page (new page, see below).
+- **Trailer button** – opens modal playing `trailerUrl` from rich detail API.
+- **Social sharing buttons** – Twitter, Facebook, and a "Copy link" button.
+- **Star rating** (1-5 stars) – save to backend.
+- **Add to My List** button.
+- **Send to my room** button (only for logged‑in user, for their own room) – opens modal with options (see room section below).
+
+---
+
+## 6. BROWSE / FILTER PAGE
+
+Create `/browse`:
+- Left sidebar with collapsible checkboxes: Genre, Country, Type (Movie/Series).
+- Right grid of results from browse API (#12) with infinite scroll.
+
+---
+
+## 7. SEARCH PAGE ENHANCEMENTS
+
+- **Live suggestions** (debounced) from API #5.
+- **Auto‑save** every search to user's search history.
+- Results grid with infinite scroll (API #3).
+
+---
+
+## 8. STAFF PROFILE PAGE
+
+New route `/staff?staffId=...`:
+- Show staff detail (API #12).
+- Grid of works (API #13) with infinite scroll.
+- Related staff (API #14) – clickable links.
+
+---
+
+## 9. PROFILE PAGE (OWN) – FULL TABS
+
+- **Watch History**: list of watched items (poster, title, progress). Resume button.
+- **My List**: grid of saved items, remove button.
+- **Search History**: list of past searches, each with "Search again" and "Delete".
+- **Room Management** (see room section below).
+- **Account Settings**: change password, delete account.
+- **Statistics**: total watch time (sum of durations of completed watches), number of movies/series completed.
+
+---
+
+## 10. ROOMS SYSTEM – FULL GOAT EXPLANATION (READ EVERY WORD)
+
+This is the most important part. Read it carefully.
+
+### What is a room?
+
+Imagine you have your own TV channel. You are the **host**. You can put any movie or TV show on your channel. Other people (called **viewers**) can tune in to your channel and watch whatever you put on.
+
+The magic part: **you don't have to stay in the room**. Once you put a movie on your channel, you can close your browser, go watch something else, or even turn off your computer. The movie keeps playing for the viewers until it ends.
+
+Every person who signs up for FoxFlix gets their own room automatically. You don't have to create it — it's already there, waiting for you.
+
+---
+
+### Part A: What the host sees and does (goat step‑by‑step)
+
+#### Where do you find your room?
+
+1. Log in to FoxFlix.
+2. Click on your profile picture (top right corner).
+3. Click **"Profile"**.
+4. In your profile page, you will see a tab called **"My Room"** or **"Room Management"**. Click it.
+
+Now you are looking at your room control panel.
+
+#### What does the control panel look like?
+
+It has several sections. I will explain each one.
+
+---
+
+**Section 1: Room settings (top of the panel)**
+
+- **Room name**: A text box that says "YourUsername's Room" by default. You can change it to anything you like, for example "Movie Night with Friends". This name is what other people see when they search for rooms.
+- **Password**: An empty box. If you leave it empty, anyone can join your room without a password. If you type a password here (e.g., "1234"), then anyone who wants to join must type that password first.
+- **Close room button**: A red button. If you click it, your room disappears immediately. Everyone watching gets kicked out. The room is gone until you send something new (then it comes back automatically).
+
+---
+
+**Section 2: Now playing & queue (the most important part)**
+
+**Now playing** – a big card that shows:
+- The title of the movie or series episode that is currently playing.
+- A poster image.
+- A progress bar (if something is playing right now).
+
+**Queue** – a list below that says **"Up next"**. This is a list of movies or series episodes that will play automatically, one after another, when the current one ends.
+
+Each item in the queue has:
+- For a movie: the title and a small poster.
+- For a series: "Stranger Things – Season 2, Episode 3 – The Spy".
+- Buttons next to each item:
+  - **↑** (up arrow) – move this item higher in the list (it will play sooner).
+  - **↓** (down arrow) – move this item lower (it will play later).
+  - **X** – remove this item from the queue.
+  - **▶** (play now) – stop whatever is playing right now and play this item immediately.
+
+**Add to queue button** – a button that says "Add to queue". When you click it, a search box pops up. You can search for any movie or series. When you find one:
+- If it's a movie: you just click "Add". It goes to the end of the queue.
+- If it's a series: you get two choices:
+  - **"Only this episode"** – you pick a season and episode number from a dropdown, then click Add.
+  - **"Whole series"** – you click Add, and every episode of that series (season 1 episode 1, season 1 episode 2, etc.) gets added to the queue in order. In the queue, it shows up as one line that says "Stranger Things – Next: S1E2" and you can click it to expand and see all episodes.
+- Also, for any movie or series, you can choose **resolution** (360p, 480p, 720p, 1080p) and **language** (English, Spanish, etc.) before adding. This is the quality and language that everyone watching will see.
+
+---
+
+**Section 3: Schedule (for future playback)**
+
+- A small form where you pick a date and time (e.g., "2025-04-10 20:00").
+- Then you search for a movie or series (same search box as above) and choose resolution/language.
+- Click **"Schedule"**.
+- Below, you see a list of upcoming scheduled items. Each has a **Cancel** button.
+- When the scheduled time arrives, that item is automatically added to the end of the queue. If your room is idle (nothing playing), it starts playing immediately. If something is already playing, it will play after that ends.
+
+---
+
+**Section 4: Requests from viewers**
+
+- Viewers (people watching your room) can send you requests. They can ask you to play a specific movie or series.
+- This section shows a list of pending requests. Each request shows the viewer's username, the title they want, and for series which episode.
+- Each request has two buttons: **Approve** (adds it to the end of your queue) and **Ignore** (deletes the request).
+
+---
+
+**Section 5: Notifications panel**
+
+- A simple log that shows text messages like:
+  - "User John joined the room"
+  - "User Alice left the room"
+  - "New request from Bob for 'Inception'"
+  - "Scheduled item 'Dune' will start in 5 minutes"
+- These messages only appear here. No popups, no sounds.
+
+---
+
+### Part B: How the host puts a movie/series into the room (two ways)
+
+**Way 1 – From any movie/series detail page (easiest)**
+
+1. Go to any movie or series page on FoxFlix (like you're going to watch it yourself).
+2. Look for a button that says **"Send to my room"**. Click it.
+3. A popup window appears. It asks you:
+   - **If nothing is playing in your room right now:**
+     - "Start playing now" (the only choice)
+   - **If something is playing right now:**
+     - "Stop current and play this now" (the current video stops, this one starts immediately)
+     - "Add to play next" (this video goes to the end of the queue)
+   - **If it's a series:**
+     - "Send only this episode" (you pick which season/episode)
+     - "Send whole series" (adds all episodes in order)
+   - **For any video:** you can also pick resolution and language.
+4. Click Confirm. The room now has that video.
+
+**Way 2 – From the Room Management panel (Add to queue button)**
+
+- Same as above, but you search from inside the panel instead of starting from a detail page.
+
+---
+
+### Part C: How the room keeps playing even when the host leaves (the magic)
+
+This happens automatically on the server (the computer running FoxFlix). You don't have to do anything.
+
+When you send a video to your room:
+
+1. The server builds the video link (MP4 URL) using the external streaming API. It includes the resolution, language, and for series the season/episode numbers.
+2. The server also finds out how long the video is (e.g., 2 hours and 10 minutes) by asking the external detail API.
+3. The server starts a timer for that exact length of time.
+4. When the timer goes off (video ends), the server looks at the queue:
+   - If there is another video in the queue, the server loads that video's link and tells all viewers to start watching it. Then starts a new timer.
+   - If the queue is empty, the server sets the room to **idle mode** and starts a **30‑minute idle timer**.
+
+**Idle mode:**
+- Viewers see a frozen picture (the last frame of the video that just ended).
+- A message says: "The host will play something soon. Room closes in 29:58 if nothing is added."
+- If you (the host) send a new video before the 30 minutes are up, the idle timer cancels and the new video starts playing immediately for everyone.
+- If 30 minutes pass and you send nothing, the room is automatically closed. It disappears from the room list. Viewers get a "Room closed" message.
+
+**Important:** You can close your browser, turn off your phone, or go watch a different movie on FoxFlix. The server keeps running the timers and playing videos from the queue. The room only stops if the server itself restarts (but we save everything to a database so it can start again).
+
+---
+
+### Part D: What viewers see and do (goat step‑by‑step)
+
+#### How viewers find rooms
+
+There are two ways:
+
+**Way 1 – From a user's profile page:**
+1. Go to any user's profile (click on their username anywhere on the site).
+2. If that user has an active room (playing or idle), you will see a big button that says **"Join Room"**. Click it.
+
+**Way 2 – From the "Room search" button in the navbar:**
+1. At the top of every page, next to the search bar, there is a button that looks like a TV or says "Rooms". Click it.
+2. A popup window appears with two tabs:
+   - **Playing Now** – shows all rooms that are currently playing a video.
+   - **Idle Rooms** – shows all rooms that are in the 30‑minute idle period (nothing playing, but not closed yet).
+3. Each room in the list shows: the room name, the host's username, and what's playing (or "Idle – ended 5 minutes ago").
+4. You can type in a search box to filter rooms by name.
+5. Click on any room to join.
+
+#### How to join a room
+
+1. Click on a room from either list.
+2. If the room has a password, a popup asks you to type the password. Type it and click OK.
+3. Your browser opens a new page: the **room player page**.
+
+#### What the room player page looks like (very important)
+
+- The page automatically goes into **fullscreen mode** (fills your whole screen) and locks to **landscape orientation** (wide, not tall). The browser's address bar and tabs disappear.
+- A video player fills the entire screen. It starts playing automatically.
+- **When the page first loads, all controls are hidden.** The viewer sees only the video — no buttons, no overlays, no X button. They enjoy the video without distractions.
+- **If the viewer taps anywhere on the screen** (or clicks if on a computer), the controls appear:
+  - An **"X" button** at the top right corner.
+  - A small **overlay** (semi‑transparent box) showing the current video title and the queue ("Up next: ...").
+- If the viewer **does not interact for 3 seconds**, the controls automatically disappear again. Only the video remains.
+- To leave the room, the viewer must:
+  1. Tap the screen to make the controls appear.
+  2. Tap the **"X" button** at the top right.
+  3. This exits fullscreen and returns them to the FoxFlix homepage.
+- The viewer cannot leave by pressing the browser's back button or escape key (those are disabled in fullscreen). The only way out is the X button or the room closing.
+- If the room closes (host closes it or auto‑close after idle), the viewer sees a message "Room closed" and is automatically redirected to the homepage.
+
+#### What happens when the room goes idle (no video playing)
+
+- The video area shows a **frozen picture** (the last frame of the last video that played, or a poster image if not available).
+- A message appears: "The host will play something soon. Room closes in 29:58 if nothing is added." (the timer counts down).
+- A button appears: **"Notify me when room starts playing again"**.
+- If you click that button, you are telling the server: "Send me an alert when the host puts on a new video."
+- When the host finally sends a new video, you will see a **toast notification** (a small popup at the bottom or top of the screen) that says: "The room has started playing: [Title]". The video then loads and starts playing automatically. You don't have to do anything.
+
+#### How viewers can request movies
+
+- On the room player page, there is a **"Request" button** (maybe an icon or a text button).
+- Click it. A search box appears.
+- You can search for any movie or series.
+- For a series, you can pick a specific episode (or "whole series" – but that sends a request for the whole series as one request).
+- After you select, click **Send Request**.
+- The host sees your request in their Room Management panel under "Requests from viewers".
+- The host can approve it (adds it to the queue) or ignore it.
+- You don't get a confirmation unless the host approves – but you can see the queue update if it gets added.
+
+#### Real‑time updates (automatic, no refreshing)
+
+The room player page stays connected to the server using WebSockets. This means:
+- If the host changes the video, the player immediately switches to the new video without reloading the page.
+- If the host adds or removes items from the queue, the overlay updates instantly.
+- If the host closes the room, you see a message "Room closed" and you are redirected to the homepage.
+
+---
+
+### Part E: Series handling – whole series vs specific episode
+
+#### When the host sends a whole series
+
+Example: Host goes to "Stranger Things" detail page, clicks "Send to my room", chooses "Whole series", then "Add to play next".
+
+What happens behind the scenes:
+
+1. The server needs to know the episode list for that series. **You do NOT call an AI for this.** Instead, you can:
+   - Let the host manually add episodes one by one, OR
+   - Hardcode a simple episode generator for demo purposes (e.g., 2 seasons, 10 episodes each with generic titles), OR
+   - Leave it as a future feature (for now, when host clicks "Whole series", add a placeholder message saying "Episode list not available").
+2. The server creates a **queue item for every single episode** in order.
+3. In the queue display (for the host and for viewers), it shows as one line: **"Stranger Things – Next: S1E2"** (if S1E1 is currently playing). You can click that line to expand it and see the full list of episodes.
+4. When S1E1 ends, the server automatically loads S1E2 and tells all viewers to play it. This repeats until all episodes are done.
+
+#### When the host sends a specific episode
+
+- Only that one episode is added to the queue (as a single item). No other episodes come with it.
+
+---
+
+### Part F: Room auto‑close and cleanup
+
+- After the last video in the queue ends, the room becomes idle for **exactly 30 minutes**.
+- During idle, viewers see the frozen frame and the countdown.
+- If the host sends a new video during idle, the room wakes up and starts playing immediately.
+- If 30 minutes pass with no new video, the room is **permanently closed**. It is removed from the database. Viewers see "Room closed" and are sent back to the homepage.
+- The host can also close the room manually at any time by clicking the red "Close room" button in the Room Management panel.
+
+---
+
+### Part G: Example – a full story from start to end
+
+**Alice (host)** signs up for FoxFlix. She goes to her profile → Room Management. She changes her room name to "Alice's Picks". She leaves password empty.
+
+She searches for "Inception", goes to the detail page, clicks "Send to my room". A popup says nothing is playing, so she clicks "Start playing now". Inception starts playing in her room.
+
+**Bob (viewer)** logs in. He clicks the Room search button in the navbar. He sees "Alice's Picks" under "Playing Now". He clicks it, joins. The room player opens fullscreen. All controls are hidden. Bob sees only the video. He taps the screen, the X button and overlay appear. He taps again, they disappear. He enjoys the movie.
+
+Alice closes her browser and goes to sleep. Inception continues playing for Bob.
+
+Inception ends. The room goes idle. Bob sees a frozen picture of the last frame of Inception. A countdown says "Room closes in 29:59". Bob clicks "Notify me when room starts playing again".
+
+The next day, Alice opens FoxFlix. She goes to her Room Management panel. She sees the room is still idle (because 30 minutes haven't passed – let's say she woke up after 20 minutes). She searches for "Dune", goes to its detail page, clicks "Send to my room". The popup says "Start playing now". She clicks it. Dune starts playing.
+
+Bob, who is still on the room player page (he left it open overnight), sees a toast notification: "The room has started playing: Dune". The video automatically switches to Dune and starts playing.
+
+Alice then decides to add "The Matrix" to the queue. She goes to the detail page of The Matrix, clicks "Send to my room", and chooses "Add to play next". The queue now shows: Now playing: Dune, Up next: The Matrix.
+
+When Dune ends, The Matrix starts playing automatically for Bob and any other viewers.
+
+Alice later clicks "Close room" in her panel. Bob sees "Room closed" and is redirected to the homepage.
+
+---
+
+### Part H: What to build for rooms (backend tables and logic)
+
+Based on the explanation above, create these database tables:
+
+- `rooms`: id, hostId, name, password, status (playing/idle/closed), currentItem (JSON), queue (JSON), idleUntil, createdAt.
+- `room_requests`: id, roomId, viewerId, subjectId, title, type, season, episode, status.
+- `room_schedule`: id, roomId, subjectId, title, type, season, episode, resolution, language, scheduledTime, status.
+
+Implement server‑side timer logic (setTimeout for video duration, idle timer, queue processing). Use WebSockets (Socket.io) for real‑time updates.
+
+Create routes for:
+- Sending a movie/series to a room (with options: play now, add to queue, whole series vs specific episode, resolution, language)
+- Listing active rooms (with search and status filters)
+- Joining a room (password check, return current stream URL)
+- Closing a room
+- Updating room name/password
+- Managing queue (reorder, remove, add)
+- Scheduling an item
+- Submitting a viewer request
+- Approving a request
+- Getting host notifications (join/leave, requests, schedule warnings)
+
+---
+
+## 11. TOAST NOTIFICATIONS
+
+Add small non‑intrusive toasts for:
+- "Added to My List" / "Removed from My List"
+- "Playback saved"
+- "Request sent to host"
+- "Room has started playing: [Title]" (for viewers who clicked "Notify me")
+- Any error messages (e.g., "Failed to load stream")
+
+---
+
+## 12. INFINITE SCROLLING (ALL LISTS)
+
+Implement infinite scroll on:
+- Homepage carousels (each section loads more when scrolled to end)
+- Search results
+- Browse results
+- Staff works
+- My List (profile page)
+- Watch History (if long)
+
+---
+
+## 13. ANIMATED NEON ACCENT COLORS (DESIGN)
+
+- Buttons, borders, and active elements cycle between cyan (`#00f3ff`), magenta (`#ff00c8`), and purple (`#9d00ff`). Use CSS `@keyframes` with `box-shadow` or `border-color`.
+- Keep background dark (`#0a0f1f`), text white/light gray, normal font (no neon on text).
+
+---
+
+## 14. CONTINUE WATCHING (EXACT TIMESTAMP)
+
+- Video player sends progress every 5 seconds to backend.
+- Store in user's watch history: `{ subjectId, progressSeconds, season, episode, lastWatched }`.
+- On detail page, if progress > 0 and not finished (within 30 seconds of end), show a "Continue watching at HH:MM:SS" button that resumes at that timestamp.
+- Resume button opens player page with `startTime` parameter.
+
+---
+
+## 15. OTHER USER PROFILES
+
+- When viewing another user's profile, if that user has an active room (status = playing or idle), show a "Join Room" button that goes to the room player page.
+
+---
+
+## 16. WHAT NOT TO CHANGE
+
+- Do not remove any existing external API calls (the 16 movie APIs).
+- Do not remove existing streaming functionality.
+- Keep the same URL structure for existing pages; add new pages as needed.
+- Keep the same design base; just add new UI elements in the same style.
+
+---
+
+## ✅ FINAL REMINDER
+
+You are adding features to an **existing** site. Do not rewrite everything from scratch. Add the new backend, add the new frontend components, and integrate them with the existing code.
+
+The external APIs are only for movie data and MP4 URLs. Your new backend endpoints are separate (e.g., `/register`, `/login`, `/room-send`, etc.). Name them whatever you like, but do not use the same `/api/` prefix as the external APIs to avoid confusion.
+
+Now, implement **all** of the above. Make the goat proud. 🐐
