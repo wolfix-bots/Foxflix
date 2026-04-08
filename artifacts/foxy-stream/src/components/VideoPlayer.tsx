@@ -428,12 +428,13 @@ const VideoPlayer = ({ streams, title, subjectId, streamId, isTV, season, episod
         </div>
       )}
 
-      {/* Controls overlay */}
-      <div className={`absolute inset-0 flex flex-col justify-end transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0"}`}>
+      {/* Controls overlay — pointer-events-none so taps on empty video area pass through
+          to the tap-catcher below. Top bar and bottom controls re-enable pointer events. */}
+      <div className={`absolute inset-0 flex flex-col justify-end transition-opacity duration-300 pointer-events-none ${showControls ? "opacity-100" : "opacity-0"}`} style={{ zIndex: 2 }}>
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/30 pointer-events-none" />
 
         {/* Top bar */}
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-3">
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-3 pointer-events-auto">
           <div className="flex items-center gap-2 min-w-0">
             <span className="font-display text-sm text-white truncate">{title}</span>
             {canPlay && !loading && (
@@ -523,7 +524,7 @@ const VideoPlayer = ({ streams, title, subjectId, streamId, isTV, season, episod
         </div>
 
         {/* Bottom controls */}
-        <div className="relative p-3 space-y-2">
+        <div className="relative p-3 space-y-2 pointer-events-auto">
           {/* Progress bar */}
           <div className="relative w-full h-3 flex items-center">
             <div className="absolute w-full h-1 bg-white/20 rounded-full" />
