@@ -62,6 +62,8 @@ const VideoPlayer = ({ streams, title, subjectId, streamId, isTV, season, episod
   const bufferCheckTimer = useRef<ReturnType<typeof setInterval>>();
   const progressTimer = useRef<ReturnType<typeof setInterval>>();
   const lastTapRef = useRef<number>(0);
+  const singleTapTimer = useRef<ReturnType<typeof setTimeout>>();
+  const touchHandledRef = useRef(false);
 
   useEffect(() => {
     const sorted = sortedByQualityAsc(streams);
@@ -259,18 +261,35 @@ const VideoPlayer = ({ streams, title, subjectId, streamId, isTV, season, episod
   };
 
   const toggleFullscreen = async () => {
-    if (!containerRef.current) return;
-    if (!fullscreen) {
-      await containerRef.current.requestFullscreen();
-      setFullscreen(true);
-      // Lock to landscape on mobile — lets the video fill the screen
+    const el = containerRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      // Standard + webkit (iOS Safari)
       try {
-        await (screen.orientation as { lock?: (o: string) => Promise<void> }).lock?.("landscape");
-      } catch { /* not supported on desktop/some browsers */ }
+        if (el.requestFullscreen) {
+          await el.requestFullscreen();
+        } else {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (el as any).webkitRequestFullscreen?.();
+        }
+      } catch { /* browser may deny */ }
+      setFullscreen(true);
+      // Lock to landscape after fullscreen is granted
+      setTimeout(async () => {
+        try {
+          await (screen.orientation as { lock?: (o: string) => Promise<void> }).lock?.("landscape");
+        } catch { /* desktop/Firefox don't support orientation lock */ }
+      }, 100);
     } else {
-      // Unlock orientation before exiting fullscreen
       try { (screen.orientation as { unlock?: () => void }).unlock?.(); } catch {}
-      await document.exitFullscreen();
+      try {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (document as any).webkitExitFullscreen?.();
+        }
+      } catch {}
       setFullscreen(false);
     }
   };
@@ -330,16 +349,6 @@ const VideoPlayer = ({ streams, title, subjectId, streamId, isTV, season, episod
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onProgress={updateBuffered}
-        onClick={togglePlay}
-        onTouchEnd={(e) => {
-          const now = Date.now();
-          if (now - lastTapRef.current < 300) {
-            // Double tap — toggle fullscreen
-            e.preventDefault();
-            toggleFullscreen();
-          }
-          lastTapRef.current = now;
-        }}
         crossOrigin="anonymous"
         playsInline
       >
@@ -354,6 +363,48 @@ const VideoPlayer = ({ streams, title, subjectId, streamId, isTV, season, episod
           />
         ))}
       </video>
+
+      {/* Tap-catcher overlay — sits between video and controls.
+          • Desktop: onClick fires → togglePlay.
+          • Mobile: onTouchEnd fires first (handles single/double tap),
+            sets touchHandledRef so the ghost click that follows is ignored. */}
+      <div
+        className="absolute inset-0"
+        style={{ zIndex: 1 }}
+        onTouchEnd={(e) => {
+          touchHandledRef.current = true;
+          const now = Date.now();
+          const since = now - lastTapRef.current;
+          lastTapRef.current = now;
+
+          if (since < 280 && since > 0) {
+            // ── Double tap ──────────────────────────────────────────────
+            e.preventDefault(); // block the ghost click that follows
+            clearTimeout(singleTapTimer.current);
+            lastTapRef.current = 0; // reset so next tap starts fresh
+            toggleFullscreen();
+            showControlsTemporarily();
+          } else {
+            // ── First tap (potential single tap) ─────────────────────
+            clearTimeout(singleTapTimer.current);
+            singleTapTimer.current = setTimeout(() => {
+              // No second tap came — treat as single tap
+              togglePlay();
+              showControlsTemporarily();
+            }, 270);
+          }
+        }}
+        onClick={() => {
+          if (touchHandledRef.current) {
+            // This click was synthesised from a touch event — already handled
+            touchHandledRef.current = false;
+            return;
+          }
+          // Desktop mouse click
+          togglePlay();
+          showControlsTemporarily();
+        }}
+      />
 
       {/* Buffering overlay */}
       {loading && (
