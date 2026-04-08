@@ -1,0 +1,7 @@
+{
+  "buildCommand": "pnpm --filter @workspace/foxy-stream run build",
+  "outputDirectory": "artifacts/foxy-stream/dist",
+  "installCommand": "pnpm install",
+  "framework": null,
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
