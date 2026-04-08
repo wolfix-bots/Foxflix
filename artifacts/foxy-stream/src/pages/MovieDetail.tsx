@@ -3,15 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Play, Star, Clock, Globe, Languages, Film, ChevronDown, ChevronUp,
-  ArrowLeft, Loader2, AlertCircle, Tv, ChevronRight, X
+  ArrowLeft, Loader2, AlertCircle, Tv, ChevronRight, X, Share2, Copy, Check,
 } from "lucide-react";
+import { toast } from "sonner";
 import { api, formatDuration } from "@/lib/api";
 import type { Stream } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import MovieRow from "@/components/MovieRow";
 import VideoPlayer from "@/components/VideoPlayer";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const AI_API = "https://apis.xwolf.space/api/ai/claude";
 
 interface SeasonInfo {
   season: number;
@@ -25,6 +26,119 @@ interface SeriesInfo {
   status: string;
 }
 
+const useOgMeta = (movie: {
+  title?: string;
+  description?: string;
+  cover?: { url: string };
+  subjectType?: number;
+} | null) => {
+  useEffect(() => {
+    if (!movie) return;
+    const pageUrl = window.location.href;
+    const setMeta = (prop: string, content: string, attr = "property") => {
+      let el = document.querySelector(`meta[${attr}="${prop}"]`) as HTMLMetaElement | null;
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute(attr, prop);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", content);
+    };
+
+    document.title = `${movie.title} — FoxyStream`;
+    setMeta("og:title", movie.title ?? "");
+    setMeta("og:description", movie.description ?? "Watch on FoxyStream");
+    setMeta("og:image", movie.cover?.url ?? "");
+    setMeta("og:url", pageUrl);
+    setMeta("og:type", movie.subjectType === 2 ? "video.tv_show" : "video.movie");
+    setMeta("og:site_name", "FoxyStream");
+    setMeta("twitter:card", "summary_large_image", "name");
+    setMeta("twitter:title", movie.title ?? "", "name");
+    setMeta("twitter:description", movie.description ?? "Watch on FoxyStream", "name");
+    setMeta("twitter:image", movie.cover?.url ?? "", "name");
+
+    return () => {
+      document.title = "FoxyStream";
+    };
+  }, [movie]);
+};
+
+const ShareButtons = ({ title, url }: { title: string; url: string }) => {
+  const [copied, setCopied] = useState(false);
+
+  const text = `Check out ${title} on FoxyStream!`;
+
+  const share = (href: string) => window.open(href, "_blank", "noopener,width=600,height=450");
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success("Link copied to clipboard!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Could not copy link");
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
+      <span className="text-xs font-display text-muted-foreground tracking-wider">SHARE</span>
+
+      {/* Twitter / X */}
+      <button
+        onClick={() => share(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`)}
+        title="Share on X / Twitter"
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-sm border border-border bg-dark-elevated hover:border-neon-cyan/40 hover:text-neon-cyan text-muted-foreground transition-all text-xs font-display"
+      >
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+        X
+      </button>
+
+      {/* Facebook */}
+      <button
+        onClick={() => share(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`)}
+        title="Share on Facebook"
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-sm border border-border bg-dark-elevated hover:border-neon-cyan/40 hover:text-neon-cyan text-muted-foreground transition-all text-xs font-display"
+      >
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+        </svg>
+        FB
+      </button>
+
+      {/* WhatsApp */}
+      <button
+        onClick={() => share(`https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`)}
+        title="Share on WhatsApp"
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-sm border border-border bg-dark-elevated hover:border-neon-cyan/40 hover:text-neon-cyan text-muted-foreground transition-all text-xs font-display"
+      >
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+        WA
+      </button>
+
+      {/* Copy link */}
+      <button
+        onClick={copyLink}
+        title="Copy link"
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-sm border transition-all text-xs font-display ${
+          copied
+            ? "border-neon-cyan/50 text-neon-cyan bg-neon-cyan/10"
+            : "border-border bg-dark-elevated hover:border-neon-cyan/40 hover:text-neon-cyan text-muted-foreground"
+        }`}
+      >
+        {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+        {copied ? "COPIED" : "COPY"}
+      </button>
+    </div>
+  );
+};
+
 const MovieDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -36,7 +150,6 @@ const MovieDetail = () => {
   const [streamError, setStreamError] = useState<string | null>(null);
   const [expandDesc, setExpandDesc] = useState(false);
 
-  // Season/episode for TV
   const [season, setSeason] = useState(1);
   const [episode, setEpisode] = useState(1);
   const [seasonOpen, setSeasonOpen] = useState(false);
@@ -60,7 +173,10 @@ const MovieDetail = () => {
   const recommended = recommendData?.data?.subjectList || [];
   const isTV = movie?.subjectType === 2;
 
-  // Fetch series info — TVMaze (accurate DB) first, Supabase AI as fallback
+  useOgMeta(movie ?? null);
+
+  const pageUrl = window.location.href;
+
   useEffect(() => {
     if (!isTV || !movie?.title || seriesInfo || loadingSeriesInfo) return;
     setLoadingSeriesInfo(true);
@@ -69,7 +185,7 @@ const MovieDetail = () => {
       const title = movie.title;
       const year = movie.releaseDate?.split("-")[0];
 
-      // 1. TVMaze — free, CORS-enabled, 100% accurate episode counts
+      // 1. TVMaze — free, CORS-enabled, highly accurate
       try {
         const searchRes = await fetch(
           `https://api.tvmaze.com/singlesearch/shows?q=${encodeURIComponent(title)}`
@@ -94,22 +210,33 @@ const MovieDetail = () => {
         }
       } catch { /* fall through to AI */ }
 
-      // 2. Fallback — Supabase AI deep research
+      // 2. Fallback — AI lookup via xwolf Claude API
       try {
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/series-info`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, year }),
-        });
-        const data = await res.json();
-        if (data?.data?.seasons) setSeriesInfo(data.data);
-      } catch { /* no info available */ }
+        const prompt = `How many seasons and episodes does the TV show "${title}"${year ? ` (${year})` : ""} have? Reply ONLY with JSON in this exact format with no extra text or markdown: {"seasons":[{"season":1,"episodeCount":10}],"totalSeasons":1,"status":"Ended"}`;
+        const res = await fetch(`${AI_API}?q=${encodeURIComponent(prompt)}`);
+        if (res.ok) {
+          const aiData = await res.json();
+          if (aiData.status && aiData.result) {
+            const parsed = JSON.parse(String(aiData.result).trim()) as SeriesInfo;
+            if (parsed.seasons?.length) {
+              setSeriesInfo(parsed);
+              return;
+            }
+          }
+        }
+      } catch { /* best effort */ }
+
+      // 3. Last resort — reasonable defaults so the player still works
+      setSeriesInfo({
+        seasons: Array.from({ length: 5 }, (_, i) => ({ season: i + 1, episodeCount: 13 })),
+        totalSeasons: 5,
+        status: "Unknown",
+      });
     };
 
     fetchInfo().finally(() => setLoadingSeriesInfo(false));
   }, [isTV, movie?.title, movie?.releaseDate, seriesInfo, loadingSeriesInfo]);
 
-  // Current season's episode count
   const currentSeasonInfo = seriesInfo?.seasons?.find((s) => s.season === season);
   const episodeCount = currentSeasonInfo?.episodeCount ?? 50;
   const totalSeasons = seriesInfo?.totalSeasons ?? 20;
@@ -352,7 +479,7 @@ const MovieDetail = () => {
                 </div>
               )}
 
-              {/* Watch button */}
+              {/* Watch + Trailer buttons */}
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   onClick={handleWatch}
@@ -373,6 +500,9 @@ const MovieDetail = () => {
                   </button>
                 )}
               </div>
+
+              {/* Social sharing */}
+              <ShareButtons title={movie.title} url={pageUrl} />
 
               {streamError && (
                 <div className="flex items-center gap-2 text-sm text-destructive border border-destructive/30 rounded-sm px-3 py-2">
@@ -395,13 +525,12 @@ const MovieDetail = () => {
         </div>
       </div>
 
-      {/* Video Player — fullscreen popup modal */}
+      {/* Video Player modal */}
       {showPlayer && streams.length > 0 && (
         <div
           className="fixed inset-0 z-[9999] bg-black flex flex-col"
           style={{ animation: "fadeIn 0.2s ease" }}
         >
-          {/* Modal header */}
           <div className="flex items-center justify-between px-4 py-3 bg-black/80 border-b border-neon-cyan/20 flex-shrink-0">
             <div className="min-w-0 flex-1">
               <p className="font-display text-xs tracking-widest text-neon-cyan">NOW PLAYING</p>
@@ -426,7 +555,6 @@ const MovieDetail = () => {
             </div>
           </div>
 
-          {/* Video centered vertically */}
           <div className="flex-1 flex items-center bg-black">
             <VideoPlayer
               streams={streams}
