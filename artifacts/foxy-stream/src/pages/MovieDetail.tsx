@@ -12,7 +12,6 @@ import type { Stream } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import MovieRow from "@/components/MovieRow";
 import VideoPlayer from "@/components/VideoPlayer";
-import StarRating from "@/components/StarRating";
 import SendToRoomModal from "@/components/SendToRoomModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { bff } from "@/lib/bff";
@@ -160,7 +159,6 @@ const MovieDetail = () => {
   const [streamError, setStreamError] = useState<string | null>(null);
   const [expandDesc, setExpandDesc] = useState(false);
   const [inWatchlist, setInWatchlist] = useState(false);
-  const [userRating, setUserRating] = useState(0);
 
   const [season, setSeason] = useState(() => Number(searchParams.get("season") || 1));
   const [episode, setEpisode] = useState(() => Number(searchParams.get("ep") || 1));
@@ -189,14 +187,11 @@ const MovieDetail = () => {
 
   const pageUrl = window.location.href;
 
-  // Load watchlist + rating state
+  // Load watchlist state
   useEffect(() => {
     if (!user || !movie?.subjectId) return;
     bff.user.getWatchlist(user.token).then(list => {
       setInWatchlist(list.some(item => item.subjectId === movie.subjectId));
-    }).catch(() => {});
-    bff.user.getRatings(user.token).then(ratings => {
-      setUserRating(ratings[movie.subjectId] ?? 0);
     }).catch(() => {});
   }, [user, movie?.subjectId]);
 
@@ -241,14 +236,6 @@ const MovieDetail = () => {
       toast.success("Added to My List");
     }
     qc.invalidateQueries({ queryKey: ["watchlist"] });
-  };
-
-  const handleRating = async (rating: number) => {
-    if (!user) { toast.error("Please log in to rate"); return; }
-    if (!movie) return;
-    setUserRating(rating);
-    await bff.user.saveRating(user.token, movie.subjectId, rating);
-    toast.success(`Rated ${rating}/5 stars`);
   };
 
   useEffect(() => {
@@ -592,15 +579,6 @@ const MovieDetail = () => {
                     <Send className="w-4 h-4" />
                     SEND TO ROOM
                   </button>
-                )}
-              </div>
-
-              {/* Star rating */}
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-display text-muted-foreground">YOUR RATING</span>
-                <StarRating value={userRating} onChange={handleRating} />
-                {userRating > 0 && (
-                  <span className="text-xs font-display text-neon-yellow">{userRating}/5</span>
                 )}
               </div>
 
