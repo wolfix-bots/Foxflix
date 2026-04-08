@@ -3,12 +3,18 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import MovieDetail from "./pages/MovieDetail";
 import TrendingPage from "./pages/TrendingPage";
 import LatestPage from "./pages/LatestPage";
 import SearchPage from "./pages/SearchPage";
+import Browse from "./pages/Browse";
+import StaffPage from "./pages/StaffPage";
+import Profile from "./pages/Profile";
+import RoomPlayer from "./pages/RoomPlayer";
+import UserProfile from "./pages/UserProfile";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,18 +28,25 @@ const queryClient = new QueryClient({
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/movie/:id" element={<MovieDetail />} />
-          <Route path="/trending" element={<TrendingPage />} />
-          <Route path="/latest" element={<LatestPage />} />
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/movie/:id" element={<MovieDetail />} />
+            <Route path="/trending" element={<TrendingPage />} />
+            <Route path="/latest" element={<LatestPage />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/browse" element={<Browse />} />
+            <Route path="/staff" element={<StaffPage />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/room/:id" element={<RoomPlayer />} />
+            <Route path="/user/:username" element={<UserProfile />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

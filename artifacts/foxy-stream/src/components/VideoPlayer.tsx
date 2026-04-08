@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, Download, X, Wifi, Captions, CaptionsOff } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, Download, X, Wifi, Captions, CaptionsOff, Gauge } from "lucide-react";
 import type { Stream } from "@/lib/api";
 import { api, formatFileSize } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { bff } from "@/lib/bff";
 
 interface CaptionTrack {
   language: string;
@@ -16,15 +18,19 @@ interface VideoPlayerProps {
   isTV?: boolean;
   season?: number;
   episode?: number;
+  resumeAt?: number;
   onClose?: () => void;
 }
+
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
 const sortedByQualityAsc = (streams: Stream[]): Stream[] => {
   const order: Record<string, number> = { "360p": 1, "480p": 2, "720p": 3, "1080p": 4, "4K": 5 };
   return [...streams].sort((a, b) => (order[a.quality] ?? 99) - (order[b.quality] ?? 99));
 };
 
-const VideoPlayer = ({ streams, title, subjectId, streamId, isTV, season, episode, onClose }: VideoPlayerProps) => {
+const VideoPlayer = ({ streams, title, subjectId, streamId, isTV, season, episode, resumeAt = 0, onClose }: VideoPlayerProps) => {
+  const { user, updateSpeed } = useAuth();
   const downloadFilename = isTV && season != null && episode != null
     ? `${title} S${String(season).padStart(2, "0")}E${String(episode).padStart(2, "0")}.mp4`
     : `${title}.mp4`;
@@ -43,6 +49,8 @@ const VideoPlayer = ({ streams, title, subjectId, streamId, isTV, season, episod
     return sorted[0] ?? streams[0];
   });
   const [showQuality, setShowQuality] = useState(false);
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(user?.playbackSpeed ?? 1);
   const [loading, setLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
   const [canPlay, setCanPlay] = useState(false);
@@ -52,6 +60,8 @@ const VideoPlayer = ({ streams, title, subjectId, streamId, isTV, season, episod
   const [showCaptionMenu, setShowCaptionMenu] = useState(false);
   const controlsTimer = useRef<ReturnType<typeof setTimeout>>();
   const bufferCheckTimer = useRef<ReturnType<typeof setInterval>>();
+  const progressTimer = useRef<ReturnType<typeof setInterval>>();
+  const lastTapRef = useRef<number>(0);
 
   useEffect(() => {
     const sorted = sortedByQualityAsc(streams);
@@ -61,6 +71,72 @@ const VideoPlayer = ({ streams, title, subjectId, streamId, isTV, season, episod
     setLoading(true);
     setLoadProgress(0);
   }, [streams]);
+
+  // Apply speed on mount + change
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.playbackRate = playbackSpeed;
+  }, [playbackSpeed]);
+
+  // Resume at position when video is ready
+  useEffect(() => {
+    if (!resumeAt || !videoRef.current) return;
+    const handler = () => {
+      if (videoRef.current && resumeAt > 0) {
+        videoRef.current.currentTime = resumeAt;
+      }
+    };
+    videoRef.current.addEventListener("loadedmetadata", handler, { once: true });
+    return () => videoRef.current?.removeEventListener("loadedmetadata", handler);
+  }, [resumeAt]);
+
+  // Progress tracking every 5s
+  useEffect(() => {
+    if (!user || !subjectId) return;
+    progressTimer.current = setInterval(() => {
+      const video = videoRef.current;
+      if (!video || !playing) return;
+      bff.user.saveProgress(user.token, {
+        subjectId,
+        title,
+        cover: undefined,
+        subjectType: isTV ? 2 : 1,
+        progressSeconds: video.currentTime,
+        duration: video.duration || 0,
+        season: isTV ? season : undefined,
+        episode: isTV ? episode : undefined,
+        lastWatched: Date.now(),
+      }).catch(() => {});
+    }, 5000);
+    return () => clearInterval(progressTimer.current);
+  }, [user, subjectId, title, isTV, season, episode, playing]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      switch (e.key) {
+        case " ": case "k": e.preventDefault(); togglePlay(); break;
+        case "ArrowLeft": e.preventDefault();
+          if (videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10);
+          break;
+        case "ArrowRight": e.preventDefault();
+          if (videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 10);
+          break;
+        case "f": case "F": e.preventDefault(); toggleFullscreen(); break;
+        case "m": case "M": e.preventDefault(); toggleMute(); break;
+        case "ArrowUp": e.preventDefault();
+          if (videoRef.current) { const v = Math.min(1, videoRef.current.volume + 0.1); videoRef.current.volume = v; setVolume(v); }
+          break;
+        case "ArrowDown": e.preventDefault();
+          if (videoRef.current) { const v = Math.max(0, videoRef.current.volume - 0.1); videoRef.current.volume = v; setVolume(v); }
+          break;
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, fullscreen, muted]);
 
   // Listen for native fullscreen exit (back button on Android etc.)
   useEffect(() => {
@@ -255,6 +331,15 @@ const VideoPlayer = ({ streams, title, subjectId, streamId, isTV, season, episod
         onPause={() => setPlaying(false)}
         onProgress={updateBuffered}
         onClick={togglePlay}
+        onTouchEnd={(e) => {
+          const now = Date.now();
+          if (now - lastTapRef.current < 300) {
+            // Double tap — toggle fullscreen
+            e.preventDefault();
+            toggleFullscreen();
+          }
+          lastTapRef.current = now;
+        }}
         crossOrigin="anonymous"
         playsInline
       >
@@ -308,9 +393,33 @@ const VideoPlayer = ({ streams, title, subjectId, streamId, isTV, season, episod
             )}
           </div>
           <div className="flex items-center gap-1.5">
+            {/* Speed */}
+            <div className="relative">
+              <button onClick={() => { setShowSpeedMenu(o => !o); setShowQuality(false); setShowCaptionMenu(false); }}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-display border border-white/30 rounded-sm hover:border-neon-cyan text-white transition-colors">
+                <Gauge className="w-3 h-3" />
+                {playbackSpeed}x
+              </button>
+              {showSpeedMenu && (
+                <div className="absolute top-full right-0 mt-1 bg-black/90 border border-white/20 rounded-sm overflow-hidden z-10">
+                  {SPEEDS.map(s => (
+                    <button key={s} onClick={() => {
+                      setPlaybackSpeed(s);
+                      setShowSpeedMenu(false);
+                      updateSpeed(s);
+                      if (videoRef.current) videoRef.current.playbackRate = s;
+                    }}
+                      className={`w-full text-left px-3 py-2 text-xs font-body hover:bg-white/10 transition-colors ${s === playbackSpeed ? "text-neon-cyan" : "text-white"}`}>
+                      {s}x
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Quality */}
             <div className="relative">
-              <button onClick={() => { setShowQuality(!showQuality); setShowCaptionMenu(false); }}
+              <button onClick={() => { setShowQuality(!showQuality); setShowCaptionMenu(false); setShowSpeedMenu(false); }}
                 className="flex items-center gap-1 px-2 py-1 text-xs font-display border border-white/30 rounded-sm hover:border-neon-cyan text-white transition-colors">
                 <Settings className="w-3 h-3" />
                 {selectedStream?.quality}

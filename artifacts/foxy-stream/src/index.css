@@ -361,3 +361,25 @@ video::-webkit-media-controls {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+
+@keyframes neon-cycle {
+  0%   { color: hsl(var(--neon-cyan)); text-shadow: 0 0 8px hsl(183 100% 50% / 0.8), 0 0 20px hsl(183 100% 50% / 0.4); }
+  33%  { color: hsl(var(--neon-magenta)); text-shadow: 0 0 8px hsl(315 100% 55% / 0.8), 0 0 20px hsl(315 100% 55% / 0.4); }
+  66%  { color: hsl(var(--neon-yellow)); text-shadow: 0 0 8px hsl(50 100% 60% / 0.8), 0 0 20px hsl(50 100% 60% / 0.4); }
+  100% { color: hsl(var(--neon-cyan)); text-shadow: 0 0 8px hsl(183 100% 50% / 0.8), 0 0 20px hsl(183 100% 50% / 0.4); }
+}
+
+@keyframes neon-border-cycle {
+  0%   { border-color: hsl(183 100% 50% / 0.5); box-shadow: 0 0 12px hsl(183 100% 50% / 0.3); }
+  33%  { border-color: hsl(315 100% 55% / 0.5); box-shadow: 0 0 12px hsl(315 100% 55% / 0.3); }
+  66%  { border-color: hsl(50 100% 60% / 0.5); box-shadow: 0 0 12px hsl(50 100% 60% / 0.3); }
+  100% { border-color: hsl(183 100% 50% / 0.5); box-shadow: 0 0 12px hsl(183 100% 50% / 0.3); }
+}
+
+.animate-neon-cycle {
+  animation: neon-cycle 4s ease-in-out infinite;
+}
+
+.animate-neon-border-cycle {
+  animation: neon-border-cycle 4s ease-in-out infinite;
+}

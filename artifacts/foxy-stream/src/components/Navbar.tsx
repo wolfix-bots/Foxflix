@@ -1,19 +1,39 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Flame, TrendingUp, Zap, Bot } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, Flame, TrendingUp, Zap, Bot, Tv, User, LogOut, Settings, ChevronDown, Filter } from "lucide-react";
 import foxLogo from "@/assets/fox-logo.png";
 import SearchBar from "./SearchBar";
 import AiChat from "./AiChat";
+import LoginModal from "./LoginModal";
+import RoomsPanel from "./RoomsPanel";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [roomsOpen, setRoomsOpen] = useState(false);
+  const [userDropOpen, setUserDropOpen] = useState(false);
+  const { user, logout } = useAuth();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const dropRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
+        setUserDropOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   const navLinks = [
     { label: "HOT", href: "/", icon: Flame },
     { label: "TRENDING", href: "/trending", icon: TrendingUp },
     { label: "LATEST", href: "/latest", icon: Zap },
+    { label: "BROWSE", href: "/browse", icon: Filter },
   ];
 
   return (
@@ -50,7 +70,16 @@ const Navbar = () => {
             <SearchBar />
           </div>
 
-          {/* FoxyAI button — desktop */}
+          {/* Rooms button */}
+          <button
+            onClick={() => setRoomsOpen(true)}
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-display tracking-wider border border-border text-muted-foreground hover:border-neon-cyan/40 hover:text-neon-cyan transition-all flex-shrink-0"
+          >
+            <Tv className="w-3.5 h-3.5" />
+            ROOMS
+          </button>
+
+          {/* FoxyAI button */}
           <button
             onClick={() => setAiOpen(true)}
             className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-display tracking-wider border border-neon-cyan/40 text-neon-cyan bg-neon-cyan/5 hover:bg-neon-cyan/10 hover:shadow-neon-subtle transition-all flex-shrink-0"
@@ -59,11 +88,43 @@ const Navbar = () => {
             FOXY AI
           </button>
 
-          {/* Powered by badges — desktop only */}
-          <div className="hidden lg:flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs font-display text-muted-foreground">POWERED BY</span>
-            <span className="px-2 py-0.5 text-xs font-display border border-neon-cyan/30 text-neon-cyan rounded-sm">FOXY TECH</span>
-            <span className="px-2 py-0.5 text-xs font-display border border-neon-magenta/30 text-neon-magenta rounded-sm">CASPER TECH</span>
+          {/* Auth area */}
+          <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+            {user ? (
+              <div className="relative" ref={dropRef}>
+                <button
+                  onClick={() => setUserDropOpen(o => !o)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-display border border-neon-cyan/30 text-neon-cyan bg-neon-cyan/5 hover:bg-neon-cyan/10 transition-all"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  {user.username.toUpperCase()}
+                  <ChevronDown className={`w-3 h-3 transition-transform ${userDropOpen ? "rotate-180" : ""}`} />
+                </button>
+                {userDropOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-44 bg-dark-elevated border border-border rounded-sm shadow-neon-subtle z-50">
+                    <button onClick={() => { navigate("/profile"); setUserDropOpen(false); }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-display text-foreground hover:text-neon-cyan hover:bg-neon-cyan/5 transition-colors">
+                      <Settings className="w-3.5 h-3.5" />PROFILE
+                    </button>
+                    <button onClick={() => { logout(); setUserDropOpen(false); }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-display text-foreground hover:text-destructive hover:bg-destructive/5 transition-colors border-t border-border">
+                      <LogOut className="w-3.5 h-3.5" />LOG OUT
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <button onClick={() => setLoginOpen(true)}
+                  className="px-3 py-1.5 text-xs font-display border border-border text-muted-foreground hover:text-foreground hover:border-neon-cyan/30 rounded-sm transition-all">
+                  LOG IN
+                </button>
+                <button onClick={() => setLoginOpen(true)}
+                  className="px-3 py-1.5 text-xs font-display bg-primary text-primary-foreground rounded-sm hover:shadow-neon-cyan transition-all">
+                  SIGN UP
+                </button>
+              </>
+            )}
           </div>
 
           {/* Hamburger */}
@@ -90,28 +151,39 @@ const Navbar = () => {
                   {label}
                 </Link>
               ))}
-
-              {/* AI Chat button in hamburger */}
-              <button
-                onClick={() => { setAiOpen(true); setMenuOpen(false); }}
-                className="flex items-center gap-2 px-3 py-2 rounded-sm text-sm font-display tracking-wider text-neon-cyan bg-neon-cyan/5 border border-neon-cyan/20 mt-1"
-              >
-                <Bot className="w-4 h-4" />
-                FOXY AI CHAT
+              <button onClick={() => { setRoomsOpen(true); setMenuOpen(false); }}
+                className="flex items-center gap-2 px-3 py-2 rounded-sm text-sm font-display text-muted-foreground">
+                <Tv className="w-4 h-4" />ROOMS
               </button>
-            </div>
-
-            <div className="flex items-center gap-2 pt-2 border-t border-border">
-              <span className="text-xs font-display text-muted-foreground">POWERED BY</span>
-              <span className="px-2 py-0.5 text-xs font-display border border-neon-cyan/30 text-neon-cyan rounded-sm">FOXY TECH</span>
-              <span className="px-2 py-0.5 text-xs font-display border border-neon-magenta/30 text-neon-magenta rounded-sm">CASPER TECH</span>
+              <button onClick={() => { setAiOpen(true); setMenuOpen(false); }}
+                className="flex items-center gap-2 px-3 py-2 rounded-sm text-sm font-display tracking-wider text-neon-cyan bg-neon-cyan/5 border border-neon-cyan/20 mt-1">
+                <Bot className="w-4 h-4" />FOXY AI CHAT
+              </button>
+              {user ? (
+                <>
+                  <Link to="/profile" onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-display text-muted-foreground">
+                    <User className="w-4 h-4" />PROFILE
+                  </Link>
+                  <button onClick={() => { logout(); setMenuOpen(false); }}
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-display text-destructive">
+                    <LogOut className="w-4 h-4" />LOG OUT
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => { setLoginOpen(true); setMenuOpen(false); }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-display text-neon-cyan border border-neon-cyan/20 rounded-sm">
+                  <User className="w-4 h-4" />LOG IN / SIGN UP
+                </button>
+              )}
             </div>
           </div>
         )}
       </nav>
 
-      {/* AI Chat panel — controlled from hamburger */}
       <AiChat open={aiOpen} onClose={() => setAiOpen(false)} />
+      {loginOpen && <LoginModal onClose={() => setLoginOpen(false)} />}
+      {roomsOpen && <RoomsPanel onClose={() => setRoomsOpen(false)} />}
     </>
   );
 };

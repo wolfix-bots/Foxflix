@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Play, Star, Clock, Globe, Languages, Film, ChevronDown, ChevronUp,
   ArrowLeft, Loader2, AlertCircle, Tv, ChevronRight, X, Share2, Copy, Check,
+  Bookmark, BookmarkCheck, Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api, formatDuration } from "@/lib/api";
@@ -11,6 +12,10 @@ import type { Stream } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import MovieRow from "@/components/MovieRow";
 import VideoPlayer from "@/components/VideoPlayer";
+import StarRating from "@/components/StarRating";
+import SendToRoomModal from "@/components/SendToRoomModal";
+import { useAuth } from "@/contexts/AuthContext";
+import { bff } from "@/lib/bff";
 
 const AI_API = "https://apis.xwolf.space/api/ai/claude";
 
@@ -142,16 +147,23 @@ const ShareButtons = ({ title, url }: { title: string; url: string }) => {
 const MovieDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const qc = useQueryClient();
   const [showPlayer, setShowPlayer] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
+  const [showSendToRoom, setShowSendToRoom] = useState(false);
   const [streams, setStreams] = useState<Stream[]>([]);
   const [streamId, setStreamId] = useState<string | null>(null);
+  const [resumeAt, setResumeAt] = useState(0);
   const [loadingStreams, setLoadingStreams] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
   const [expandDesc, setExpandDesc] = useState(false);
+  const [inWatchlist, setInWatchlist] = useState(false);
+  const [userRating, setUserRating] = useState(0);
 
-  const [season, setSeason] = useState(1);
-  const [episode, setEpisode] = useState(1);
+  const [season, setSeason] = useState(() => Number(searchParams.get("season") || 1));
+  const [episode, setEpisode] = useState(() => Number(searchParams.get("ep") || 1));
   const [seasonOpen, setSeasonOpen] = useState(false);
   const [episodeOpen, setEpisodeOpen] = useState(false);
   const [seriesInfo, setSeriesInfo] = useState<SeriesInfo | null>(null);
@@ -176,6 +188,68 @@ const MovieDetail = () => {
   useOgMeta(movie ?? null);
 
   const pageUrl = window.location.href;
+
+  // Load watchlist + rating state
+  useEffect(() => {
+    if (!user || !movie?.subjectId) return;
+    bff.user.getWatchlist(user.token).then(list => {
+      setInWatchlist(list.some(item => item.subjectId === movie.subjectId));
+    }).catch(() => {});
+    bff.user.getRatings(user.token).then(ratings => {
+      setUserRating(ratings[movie.subjectId] ?? 0);
+    }).catch(() => {});
+  }, [user, movie?.subjectId]);
+
+  // Auto-resume from ?resume= search param
+  useEffect(() => {
+    const resumeParam = searchParams.get("resume");
+    if (resumeParam && movie && !showPlayer) {
+      const t = Number(resumeParam);
+      if (t > 0) {
+        setResumeAt(t);
+        // Build streams and open player
+        try {
+          const { streams: built, streamId: sid } = api.getStreams(
+            movie.subjectId,
+            isTV ? season : undefined,
+            isTV ? episode : undefined
+          );
+          setStreams(built);
+          setStreamId(sid);
+          setShowPlayer(true);
+        } catch {}
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [movie?.subjectId]);
+
+  const toggleWatchlist = async () => {
+    if (!user) { toast.error("Please log in to use My List"); return; }
+    if (!movie) return;
+    if (inWatchlist) {
+      await bff.user.removeFromWatchlist(user.token, movie.subjectId);
+      setInWatchlist(false);
+      toast.success("Removed from My List");
+    } else {
+      await bff.user.addToWatchlist(user.token, {
+        subjectId: movie.subjectId,
+        title: movie.title,
+        cover: movie.cover?.url,
+        subjectType: movie.subjectType,
+      });
+      setInWatchlist(true);
+      toast.success("Added to My List");
+    }
+    qc.invalidateQueries({ queryKey: ["watchlist"] });
+  };
+
+  const handleRating = async (rating: number) => {
+    if (!user) { toast.error("Please log in to rate"); return; }
+    if (!movie) return;
+    setUserRating(rating);
+    await bff.user.saveRating(user.token, movie.subjectId, rating);
+    toast.success(`Rated ${rating}/5 stars`);
+  };
 
   useEffect(() => {
     if (!isTV || !movie?.title || seriesInfo || loadingSeriesInfo) return;
@@ -499,6 +573,35 @@ const MovieDetail = () => {
                     TRAILER
                   </button>
                 )}
+
+                {/* Watchlist */}
+                <button onClick={toggleWatchlist}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 border font-display text-xs tracking-wider rounded-sm transition-all ${
+                    inWatchlist
+                      ? "border-neon-cyan/50 text-neon-cyan bg-neon-cyan/10"
+                      : "border-border text-muted-foreground hover:border-neon-cyan/30 hover:text-neon-cyan"
+                  }`}>
+                  {inWatchlist ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+                  {inWatchlist ? "MY LIST" : "ADD TO LIST"}
+                </button>
+
+                {/* Send to Room */}
+                {user && (
+                  <button onClick={() => setShowSendToRoom(true)}
+                    className="flex items-center gap-1.5 px-4 py-2.5 border border-border text-muted-foreground font-display text-xs tracking-wider rounded-sm hover:border-neon-magenta/40 hover:text-neon-magenta transition-all">
+                    <Send className="w-4 h-4" />
+                    SEND TO ROOM
+                  </button>
+                )}
+              </div>
+
+              {/* Star rating */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-display text-muted-foreground">YOUR RATING</span>
+                <StarRating value={userRating} onChange={handleRating} />
+                {userRating > 0 && (
+                  <span className="text-xs font-display text-neon-yellow">{userRating}/5</span>
+                )}
               </div>
 
               {/* Social sharing */}
@@ -564,10 +667,20 @@ const MovieDetail = () => {
               isTV={isTV}
               season={isTV ? season : undefined}
               episode={isTV ? episode : undefined}
+              resumeAt={resumeAt}
               onClose={() => setShowPlayer(false)}
             />
           </div>
         </div>
+      )}
+
+      {/* Send to Room modal */}
+      {showSendToRoom && movie && (
+        <SendToRoomModal
+          movie={movie}
+          seriesInfo={seriesInfo}
+          onClose={() => setShowSendToRoom(false)}
+        />
       )}
 
       {/* Trailer modal */}
@@ -607,8 +720,12 @@ const MovieDetail = () => {
           <h2 className="font-display text-sm font-bold tracking-widest text-neon-cyan mb-4">TOP CAST</h2>
           <div className="flex gap-5 overflow-x-auto hide-scrollbar pb-2">
             {movie.staffList.slice(0, 15).map((staff, i) => (
-              <div key={i} className="flex-shrink-0 text-center w-24">
-                <div className="w-20 h-20 mx-auto rounded-full overflow-hidden border-2 border-border hover:border-neon-cyan transition-colors bg-dark-elevated">
+              <button
+                key={i}
+                onClick={() => navigate(`/staff?name=${encodeURIComponent(staff.name ?? "")}`)}
+                className="flex-shrink-0 text-center w-24 group"
+              >
+                <div className="w-20 h-20 mx-auto rounded-full overflow-hidden border-2 border-border group-hover:border-neon-cyan transition-colors bg-dark-elevated">
                   {staff.avatar?.url ? (
                     <img src={staff.avatar.url} alt={staff.name} className="w-full h-full object-cover" />
                   ) : (
@@ -617,9 +734,9 @@ const MovieDetail = () => {
                     </div>
                   )}
                 </div>
-                <p className="text-xs font-body font-semibold text-foreground mt-2 truncate">{staff.name}</p>
+                <p className="text-xs font-body font-semibold text-foreground mt-2 truncate group-hover:text-neon-cyan transition-colors">{staff.name}</p>
                 <p className="text-xs text-muted-foreground truncate">{staff.role}</p>
-              </div>
+              </button>
             ))}
           </div>
         </div>
