@@ -50,6 +50,15 @@ const Navbar = () => {
             <SearchBar />
           </div>
 
+          {/* FoxyAI button — desktop */}
+          <button
+            onClick={() => setAiOpen(true)}
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-display tracking-wider border border-neon-cyan/40 text-neon-cyan bg-neon-cyan/5 hover:bg-neon-cyan/10 hover:shadow-neon-subtle transition-all flex-shrink-0"
+          >
+            <Bot className="w-3.5 h-3.5" />
+            FOXY AI
+          </button>
+
           {/* Powered by badges — desktop only */}
           <div className="hidden lg:flex items-center gap-2 flex-shrink-0">
             <span className="text-xs font-display text-muted-foreground">POWERED BY</span>

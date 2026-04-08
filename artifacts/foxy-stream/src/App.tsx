@@ -9,7 +9,6 @@ import MovieDetail from "./pages/MovieDetail";
 import TrendingPage from "./pages/TrendingPage";
 import LatestPage from "./pages/LatestPage";
 import SearchPage from "./pages/SearchPage";
-import AiChat from "./components/AiChat";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,7 +33,6 @@ const App = () => (
           <Route path="/search" element={<SearchPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-        <AiChat />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
