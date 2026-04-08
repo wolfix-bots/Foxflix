@@ -4,6 +4,16 @@
 
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 
+## Artifacts
+
+### FoxyStream (`artifacts/foxy-stream`)
+- Cyberpunk-themed movie & TV streaming web app
+- Imported from: https://github.com/wolfix-bots/cyber-stream-foxy
+- Tech: React 18 + TypeScript + Vite + Tailwind CSS v4 + shadcn/ui + TanStack Query
+- API: xcasper API (`movieapi.xcasper.space`) for streams and content
+- Features: Hot/Trending/Latest rows, Movie detail with video player, Search, AI chat (FoxyAI via Supabase edge functions)
+- Optional: AI features require `VITE_SUPABASE_URL` env var pointing to the Supabase project
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces

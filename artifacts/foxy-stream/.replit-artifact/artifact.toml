@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "FoxyStream"
+version = "1.0.0"
+id = "artifacts/foxy-stream"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22353
+
+[services.development]
+run = "pnpm --filter @workspace/foxy-stream run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/foxy-stream", "run", "build" ]
+publicDir = "artifacts/foxy-stream/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22353"
+BASE_PATH = "/"
