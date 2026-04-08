@@ -1,0 +1,15 @@
+[build]
+  builder      = "NIXPACKS"
+  buildCommand = "pnpm install && pnpm run build"
+
+[deploy]
+  # Serves the Vite dist folder as a static site on Railway
+  startCommand       = "npx serve dist -l $PORT"
+  restartPolicyType  = "ON_FAILURE"
+  restartPolicyMaxRetries = 5
+
+[[services.variables]]
+  name  = "NODE_ENV"
+  value = "production"
+# Set VITE_API_URL in the Railway dashboard → Variables
+# e.g. https://foxflix-api.up.railway.app

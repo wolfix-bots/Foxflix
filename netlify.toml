@@ -1,0 +1,17 @@
+# ── Build settings ───────────────────────────────────────────────────────────
+[build]
+  base    = "artifacts/foxy-stream"
+  command = "pnpm install && pnpm run build"
+  publish = "dist"
+
+# ── Environment variables ─────────────────────────────────────────────────────
+# Set VITE_API_URL in the Netlify dashboard → Site settings → Environment variables
+# e.g. https://foxflix-api.onrender.com
+[build.environment]
+  NODE_VERSION = "20"
+
+# ── SPA fallback (client-side routing) ───────────────────────────────────────
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
