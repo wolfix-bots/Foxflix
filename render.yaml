@@ -1,27 +1,25 @@
 services:
   # ── Backend API (Web Service) ─────────────────────────────────────────────
+  # Supports Socket.io for real-time rooms
   - type: web
     name: foxflix-api
     runtime: node
-    rootDir: artifacts/api-server
-    buildCommand: pnpm install && pnpm run build
-    startCommand: node dist/index.mjs
+    buildCommand: pnpm install && pnpm --filter @workspace/api-server run build
+    startCommand: node artifacts/api-server/dist/index.mjs
     envVars:
       - key: NODE_ENV
         value: production
       - key: SESSION_SECRET
         generateValue: true
-      - key: PORT
-        value: 10000
 
   # ── Frontend (Static Site) ────────────────────────────────────────────────
   - type: static
     name: foxflix-web
-    rootDir: artifacts/foxy-stream
-    buildCommand: pnpm install && pnpm run build
-    staticPublishPath: dist
+    buildCommand: pnpm install && pnpm --filter @workspace/foxy-stream run build
+    staticPublishPath: artifacts/foxy-stream/dist
     envVars:
-      # Set this to your Render backend URL, e.g. https://foxflix-api.onrender.com
+      # After backend deploys, set this to your Render API URL:
+      # e.g. https://foxflix-api.onrender.com
       - key: VITE_API_URL
         sync: false
     routes:

@@ -1,12 +1,12 @@
 # ── Build settings ───────────────────────────────────────────────────────────
+# Builds from repo root so pnpm workspace catalog versions resolve correctly
 [build]
-  base    = "artifacts/foxy-stream"
-  command = "pnpm install && pnpm run build"
-  publish = "dist"
+  command = "pnpm install && pnpm --filter @workspace/foxy-stream run build"
+  publish = "artifacts/foxy-stream/dist"
 
 # ── Environment variables ─────────────────────────────────────────────────────
-# Set VITE_API_URL in the Netlify dashboard → Site settings → Environment variables
-# e.g. https://foxflix-api.onrender.com
+# Set VITE_API_URL in Netlify dashboard → Site settings → Environment variables
+# e.g. https://foxflix-api.onrender.com  (your backend URL)
 [build.environment]
   NODE_VERSION = "20"
 
